@@ -4,15 +4,10 @@ import env from "./env";
 
 const db = knex({
   client: "postgres",
-  connection: {
-    connectionString: env.DB_URL, 
-    ssl: {
-      rejectUnauthorized: false
-    }
-  },
+  connection:  env.DB_URL, 
   pool: {
-    min: env.DB_POOL_MIN || 2, 
-    max: env.DB_POOL_MAX || 10
+    min: env.DB_POOL_MIN, 
+    max: env.DB_POOL_MAX
   }
 });
 export default db;
