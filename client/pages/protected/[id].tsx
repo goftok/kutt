@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from 'react-hook-form';
 import { Flex } from "rebass/styled-components";
 import React, { useState } from "react";
 import { NextPage } from "next";
@@ -20,12 +20,11 @@ interface Props {
 const ProtectedPage: NextPage<Props> = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [formState, { password }] = useFormState<{ password: string }>();
+  const { register, handleSubmit, formState: { errors } } = useForm<{ password: string }>();
   const [error, setError] = useState<string>();
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    const { password } = formState.values;
+  const onSubmit = async (data: { password: string }) => {
+    const { password } = data;
 
     if (!password) {
       return setError("Password must not be empty.");
@@ -62,11 +61,11 @@ const ProtectedPage: NextPage<Props> = () => {
           <Flex
             as="form"
             alignItems="center"
-            onSubmit={onSubmit}
+            onSubmit={handleSubmit(onSubmit)}
             style={{ position: "relative" }}
           >
             <TextInput
-              {...password("password")}
+              {...register("password", { required: "Password is required" })}
               placeholder="Password"
               autocomplete="off"
               height={[44, 54]}

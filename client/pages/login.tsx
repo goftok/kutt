@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from 'react-hook-form';
 import React, { useEffect, useState } from "react";
 import { Flex } from "rebass/styled-components";
 import emailValidator from "email-validator";
@@ -36,20 +36,16 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState({ login: false, signup: false });
-  const [formState, { email, password, label }] = useFormState<{
-    email: string;
-    password: string;
-  }>(null, { withIds: true });
+  const { register, handleSubmit, formState: { errors }, getValues } = useForm<{ email: string; password: string }>();
+
 
   useEffect(() => {
     if (isAuthenticated) Router.push("/");
   }, [isAuthenticated]);
 
   function onSubmit(type: "login" | "signup") {
-    return async (e) => {
-      e.preventDefault();
-      const { email, password } = formState.values;
-
+    return async (data: { email: string; password: string }) => {
+      const { email, password } = data;
       if (loading.login || loading.signup) return null;
 
       if (!email) {
@@ -69,7 +65,7 @@ const LoginPage = () => {
       if (type === "login") {
         setLoading((s) => ({ ...s, login: true }));
         try {
-          await login(formState.values);
+          await login(data);
           Router.push("/");
         } catch (error) {
           setError(error.response.data.error);
@@ -100,15 +96,15 @@ const LoginPage = () => {
         {verifying ? (
           <H2 textAlign="center" light>
             A verification email has been sent to{" "}
-            <Email>{formState.values.email}</Email>.
+            <Email>{getValues("email")}</Email>
           </H2>
         ) : (
-          <LoginForm id="login-form" onSubmit={onSubmit("login")}>
-            <Text {...label("email")} as="label" mb={2} bold>
+          <LoginForm id="login-form" onSubmit={handleSubmit(onSubmit("login"))}>
+            <Text as="label" mb={2} bold>
               Email address:
             </Text>
             <TextInput
-              {...email("email")}
+              {...register("email", { required: "Email is required", validate: emailValidator.validate })}
               placeholder="Email address..."
               height={[56, 64, 72]}
               fontSize={[15, 16]}
@@ -118,11 +114,12 @@ const LoginPage = () => {
               maxWidth="100%"
               autoFocus
             />
-            <Text {...label("password")} as="label" mb={2} bold>
+            {errors.email && <Text color="red" mt={1}>{errors.email.message}</Text>}
+            <Text as="label" mb={2} bold>
               Password{!DISALLOW_REGISTRATION ? " (min chars: 8)" : ""}:
             </Text>
             <TextInput
-              {...password("password")}
+              {...register("password", { required: "Password is required", minLength: { value: 8, message: "Password must be at least 8 chars long" } })}
               placeholder="Password..."
               px={[4, 40]}
               height={[56, 64, 72]}
@@ -131,12 +128,13 @@ const LoginPage = () => {
               maxWidth="100%"
               mb={[24, 4]}
             />
+            {errors.password && <Text color="red" mt={1}>{errors.password.message}</Text>}
             <Flex justifyContent="center">
               <Button
                 flex="1 1 auto"
                 mr={!DISALLOW_REGISTRATION ? ["8px", 16] : 0}
                 height={[44, 56]}
-                onClick={onSubmit("login")}
+                type="submit"
               >
                 <Icon
                   name={loading.login ? "spinner" : "login"}
@@ -151,7 +149,7 @@ const LoginPage = () => {
                   ml={["8px", 16]}
                   height={[44, 56]}
                   color="purple"
-                  onClick={onSubmit("signup")}
+                  onClick={handleSubmit(onSubmit("signup"))}
                 >
                   <Icon
                     name={loading.signup ? "spinner" : "signup"}

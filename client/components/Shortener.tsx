@@ -1,5 +1,5 @@
 import { CopyToClipboard } from "react-copy-to-clipboard";
-import { useFormState } from "react-use-form-state";
+import { useForm } from 'react-hook-form';
 import { Flex } from "rebass/styled-components";
 import React, { useState } from "react";
 import styled from "styled-components";
@@ -69,63 +69,27 @@ const Shortener = () => {
   const [message, setMessage] = useMessage(3000);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useCopy();
-  const [formState, { raw, password, text, select, label }] =
-    useFormState<Form>(
-      { showAdvanced: false },
-      {
-        withIds: true,
-        onChange(e, stateValues, nextStateValues) {
-          if (stateValues.showAdvanced && !nextStateValues.showAdvanced) {
-            formState.clear();
-            formState.setField("target", stateValues.target);
-          }
-        }
-      }
-    );
+  const { register, handleSubmit, watch, setValue, reset } = useForm<Form>({
+    defaultValues: { showAdvanced: false },
+  });
+  const showAdvanced = watch('showAdvanced');
+  const domain = watch("domain");
 
-  const submitLink = async (reCaptchaToken?: string) => {
-    try {
-      const link = await submit({ ...formState.values, reCaptchaToken });
-      setLink(link);
-      formState.clear();
-    } catch (err) {
-      setMessage(
-        err?.response?.data?.error || "Couldn't create the short link."
-      );
-    }
-    setLoading(false);
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = handleSubmit(async (data) => {
     if (loading) return;
     setCopied(false);
     setLoading(true);
 
-    if (
-      process.env.NODE_ENV === "production" &&
-      !!publicRuntimeConfig.RECAPTCHA_SITE_KEY &&
-      !isAuthenticated
-    ) {
-      window.grecaptcha.execute(window.captchaId);
-      const getCaptchaToken = () => {
-        setTimeout(() => {
-          if (window.isCaptchaReady) {
-            const reCaptchaToken = window.grecaptcha.getResponse(
-              window.captchaId
-            );
-            window.isCaptchaReady = false;
-            window.grecaptcha.reset(window.captchaId);
-            return submitLink(reCaptchaToken);
-          }
-          return getCaptchaToken();
-        }, 200);
-      };
-      return getCaptchaToken();
+    try {
+      const link = await submit({ ...data });
+      setLink(link);
+      reset();
+    } catch (err) {
+      setMessage(err?.response?.data?.error || "Couldn't create the short link.");
     }
 
-    return submitLink();
-  };
+    setLoading(false);
+  });
 
   const title = !link && (
     <H1 fontSize={[25, 27, 32]} light>
@@ -199,7 +163,7 @@ const Shortener = () => {
         onSubmit={onSubmit}
       >
         <TextInput
-          {...text("target")}
+          {...register("target")}
           placeholder="Paste your long URL"
           placeholderSize={[16, 17, 18]}
           fontSize={[18, 20, 22]}
@@ -229,30 +193,23 @@ const Shortener = () => {
         </Text>
       )}
       <Checkbox
-        {...raw({
-          name: "showAdvanced",
-          onChange: () => {
-            if (!isAuthenticated) {
-              setMessage(
-                "You need to log in or sign up to use advanced options."
-              );
-              return false;
-            }
-            return !formState.values.showAdvanced;
+        {...register("showAdvanced")}
+        checked={showAdvanced}
+        onChange={() => {
+          if (!isAuthenticated) {
+            setMessage("You need to log in or sign up to use advanced options.");
+          } else {
+            setValue("showAdvanced", !showAdvanced);
           }
-        })}
-        checked={formState.values.showAdvanced}
+        }}
         label="Show advanced options"
-        mt={[3, 24]}
-        alignSelf="flex-start"
       />
-      {formState.values.showAdvanced && (
+      {showAdvanced && (
         <div>
           <Flex mt={4} flexDirection={["column", "row"]}>
             <Col mb={[3, 0]}>
               <Text
                 as="label"
-                {...label("domain")}
                 fontSize={[14, 15]}
                 mb={2}
                 bold
@@ -260,7 +217,7 @@ const Shortener = () => {
                 Domain:
               </Text>
               <Select
-                {...select("domain")}
+                {...register("domain")}
                 data-lpignore
                 pl={[3, 24]}
                 pr={[3, 24]}
@@ -279,15 +236,14 @@ const Shortener = () => {
             <Col mb={[3, 0]} ml={[0, 24]}>
               <Text
                 as="label"
-                {...label("customurl")}
                 fontSize={[14, 15]}
                 mb={2}
                 bold
               >
-                {formState.values.domain || defaultDomain}/
+                {domain || defaultDomain}/
               </Text>
               <TextInput
-                {...text("customurl")}
+                {...register("customurl")}
                 placeholder="Custom address..."
                 autocomplete="off"
                 data-lpignore
@@ -302,7 +258,6 @@ const Shortener = () => {
             <Col ml={[0, 24]}>
               <Text
                 as="label"
-                {...label("password")}
                 fontSize={[14, 15]}
                 mb={2}
                 bold
@@ -310,7 +265,7 @@ const Shortener = () => {
                 Password:
               </Text>
               <TextInput
-                {...password("password")}
+                {...register("password")}
                 placeholder="Password..."
                 autocomplete="off"
                 data-lpignore
@@ -327,7 +282,6 @@ const Shortener = () => {
             <Col mb={[3, 0]}>
               <Text
                 as="label"
-                {...label("expire_in")}
                 fontSize={[14, 15]}
                 mb={2}
                 bold
@@ -335,7 +289,7 @@ const Shortener = () => {
                 Expire in:
               </Text>
               <TextInput
-                {...text("expire_in")}
+                {...register("expire_in")}
                 placeholder="2 minutes/hours/days"
                 data-lpignore
                 pl={[3, 24]}
@@ -350,7 +304,6 @@ const Shortener = () => {
             <Col width={[1, 2 / 3]} ml={[0, 26]}>
               <Text
                 as="label"
-                {...label("description")}
                 fontSize={[14, 15]}
                 mb={2}
                 bold
@@ -358,7 +311,7 @@ const Shortener = () => {
                 Description:
               </Text>
               <TextInput
-                {...text("description")}
+                {...register("description")}
                 placeholder="Description"
                 data-lpignore
                 pl={[3, 24]}

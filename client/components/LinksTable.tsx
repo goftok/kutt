@@ -1,12 +1,12 @@
 import formatDistanceToNow from "date-fns/formatDistanceToNow";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import React, { FC, useState, useEffect } from "react";
-import { useFormState } from "react-use-form-state";
+import { useForm } from "react-hook-form";
 import { Flex } from "rebass/styled-components";
 import styled, { css } from "styled-components";
 import { ifProp } from "styled-tools";
 import getConfig from "next/config";
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 import differenceInMilliseconds from "date-fns/differenceInMilliseconds";
 import ms from "ms";
 
@@ -32,13 +32,13 @@ const Tr = styled(Flex).attrs({ as: "tr", px: [12, 12, 2] })``;
 const Th = styled(Flex)``;
 Th.defaultProps = { as: "th", flexBasis: 0, py: [12, 12, 3], px: [12, 12, 3] };
 
-const Td = styled(Flex)<{ withFade?: boolean }>`
+const Td = styled(Flex) <{ withFade?: boolean }>`
   position: relative;
   white-space: nowrap;
 
   ${ifProp(
-    "withFade",
-    css`
+  "withFade",
+  css`
       :after {
         content: "";
         position: absolute;
@@ -57,7 +57,7 @@ const Td = styled(Flex)<{ withFade?: boolean }>`
         );
       }
     `
-  )}
+)}
 `;
 Td.defaultProps = {
   as: "td",
@@ -122,21 +122,20 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
   const isAdmin = useStoreState((s) => s.auth.isAdmin);
   const ban = useStoreActions((s) => s.links.ban);
   const edit = useStoreActions((s) => s.links.edit);
-  const [banFormState, { checkbox }] = useFormState<BanForm>();
-  const [editFormState, { text, label, password }] = useFormState<EditForm>(
-    {
+  const { register: registerBan, handleSubmit: handleBanSubmit, watch: watchBan } = useForm<BanForm>();
+  const { register: registerEdit, handleSubmit: handleEditSubmit, reset, setValue: setEditValue, watch: watchEdit } = useForm<EditForm>({
+    defaultValues: {
       target: link.target,
       address: link.address,
       description: link.description,
       expire_in: link.expire_in
-        ? ms(differenceInMilliseconds(new Date(link.expire_in), new Date()), {
-            long: true
-          })
+        ? ms(differenceInMilliseconds(new Date(link.expire_in), new Date()), { long: true })
         : "",
       password: ""
-    },
-    { withIds: true }
-  );
+    }
+  });
+
+
   const [copied, setCopied] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [qrModal, setQRModal] = useState(false);
@@ -153,36 +152,38 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
     }, 1500);
   };
 
-  const onBan = async () => {
+  const onBan = handleBanSubmit(async (data) => {
     setBanLoading(true);
     try {
-      const res = await ban({ id: link.id, ...banFormState.values });
+      const res = await ban({ id: link.id, ...data });
       setBanMessage(res.message, "green");
-      setTimeout(() => {
-        setBanModal(false);
-      }, 2000);
+      setTimeout(() => setBanModal(false), 2000);
     } catch (err) {
       setBanMessage(errorMessage(err));
     }
     setBanLoading(false);
-  };
+  });
 
-  const onEdit = async () => {
+
+  const onEdit = async (data: EditForm) => {
     if (editLoading) return;
     setEditLoading(true);
     try {
-      await edit({ id: link.id, ...editFormState.values });
+      await edit({ id: link.id, ...data });
       setShowEdit(false);
     } catch (err) {
       setEditMessage(errorMessage(err));
     }
-    editFormState.setField("password", "");
+    setEditValue("password", "");
     setEditLoading(false);
   };
 
+
   const toggleEdit = () => {
     setShowEdit((s) => !s);
-    if (showEdit) editFormState.reset();
+    if (showEdit) {
+      reset();
+    }
     setEditMessage("");
   };
 
@@ -338,7 +339,6 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
             <Flex alignItems="flex-start" width={1}>
               <Col alignItems="flex-start" mr={3}>
                 <Text
-                  {...label("target")}
                   as="label"
                   mb={2}
                   fontSize={[14, 15]}
@@ -348,7 +348,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
                 </Text>
                 <Flex as="form">
                   <TextInput
-                    {...text("target")}
+                    {...registerEdit("target")}
                     placeholder="Target..."
                     placeholderSize={[13, 14]}
                     fontSize={[14, 15]}
@@ -362,7 +362,6 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
               </Col>
               <Col alignItems="flex-start" mr={3}>
                 <Text
-                  {...label("address")}
                   as="label"
                   mb={2}
                   fontSize={[14, 15]}
@@ -372,7 +371,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
                 </Text>
                 <Flex as="form">
                   <TextInput
-                    {...text("address")}
+                    {...registerEdit("address")}
                     placeholder="Custom address..."
                     placeholderSize={[13, 14]}
                     fontSize={[14, 15]}
@@ -386,7 +385,6 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
               </Col>
               <Col alignItems="flex-start">
                 <Text
-                  {...label("password")}
                   as="label"
                   mb={2}
                   fontSize={[14, 15]}
@@ -396,9 +394,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
                 </Text>
                 <Flex as="form">
                   <TextInput
-                    {...password({
-                      name: "password"
-                    })}
+                    {...registerEdit("password")}
                     placeholder={link.password ? "••••••••" : "Password..."}
                     autocomplete="off"
                     data-lpignore
@@ -415,7 +411,6 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
             <Flex alignItems="flex-start" width={1} mt={3}>
               <Col alignItems="flex-start" mr={3}>
                 <Text
-                  {...label("description")}
                   as="label"
                   mb={2}
                   fontSize={[14, 15]}
@@ -425,7 +420,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
                 </Text>
                 <Flex as="form">
                   <TextInput
-                    {...text("description")}
+                    {...registerEdit("description")}
                     placeholder="description..."
                     placeholderSize={[13, 14]}
                     fontSize={[14, 15]}
@@ -439,7 +434,6 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
               </Col>
               <Col alignItems="flex-start">
                 <Text
-                  {...label("expire_in")}
                   as="label"
                   mb={2}
                   fontSize={[14, 15]}
@@ -449,7 +443,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
                 </Text>
                 <Flex as="form">
                   <TextInput
-                    {...text("expire_in")}
+                    {...registerEdit("expire_in")}
                     placeholder="2 minutes/hours/days"
                     placeholderSize={[13, 14]}
                     fontSize={[14, 15]}
@@ -467,13 +461,9 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
               mt={3}
               height={[30, 38]}
               disabled={editLoading}
-              onClick={onEdit}
+              onClick={handleEditSubmit(onEdit)}
             >
-              <Icon
-                name={editLoading ? "spinner" : "refresh"}
-                stroke="white"
-                mr={2}
-              />
+              <Icon name={editLoading ? "spinner" : "refresh"} stroke="white" mr={2} />
               {editLoading ? "Updating..." : "Update"}
             </Button>
             {editMessage.text && (
@@ -482,7 +472,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
               </Text>
             )}
           </Col>
-        </EditContent>
+        </EditContent >
       )}
       <Modal
         id="table-qrcode-modal"
@@ -491,7 +481,7 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
         closeHandler={() => setQRModal(false)}
       >
         <RowCenter width={192}>
-          <QRCode size={192} value={link.link} />
+          <QRCodeSVG size={192} value={link.link} />
         </RowCenter>
       </Modal>
       <Modal
@@ -508,10 +498,10 @@ const Row: FC<RowProps> = ({ index, link, setDeleteModal }) => {
             <Span bold>&quot;{removeProtocol(link.link)}&quot;</Span>?
           </Text>
           <RowCenter>
-            <Checkbox {...checkbox("user")} label="User" mb={12} />
-            <Checkbox {...checkbox("userLinks")} label="User links" mb={12} />
-            <Checkbox {...checkbox("host")} label="Host" mb={12} />
-            <Checkbox {...checkbox("domain")} label="Domain" mb={12} />
+            <Checkbox {...registerBan("user")} checked={watchBan("userLinks")} label="User" mb={12} />
+            <Checkbox {...registerBan("userLinks")} checked={watchBan("userLinks")} label="User links" mb={12} />
+            <Checkbox {...registerBan("host")} checked={watchBan("userLinks")} label="Host" mb={12} />
+            <Checkbox {...registerBan("domain")} checked={watchBan("userLinks")} label="Domain" mb={12} />
           </RowCenter>
           <Flex justifyContent="center" mt={4}>
             {banLoading ? (
@@ -555,12 +545,11 @@ const LinksTable: FC = () => {
   const [deleteModal, setDeleteModal] = useState(-1);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteMessage, setDeleteMessage] = useMessage();
-  const [formState, { label, checkbox, text }] = useFormState<Form>(
-    { skip: "0", limit: "10", all: false },
-    { withIds: true }
-  );
+  const { register, handleSubmit, setValue, watch } = useForm<Form>({
+    defaultValues: { skip: "0", limit: "10", all: false }
+  });
 
-  const options = formState.values;
+  const options = watch();
   const linkToDelete = links.items[deleteModal];
 
   useEffect(() => {
@@ -569,9 +558,8 @@ const LinksTable: FC = () => {
     );
   }, [options, get]);
 
-  const onSubmit = (e) => {
-    e.preventDefault();
-    get(options);
+  const onSubmit = (data) => {
+    get(data);
   };
 
   const onDelete = async () => {
@@ -587,7 +575,7 @@ const LinksTable: FC = () => {
   };
 
   const onNavChange = (nextPage: number) => () => {
-    formState.setField("skip", (parseInt(options.skip) + nextPage).toString());
+    setValue("skip", (parseInt(options.skip) + nextPage).toString());
   };
 
   const Nav = (
@@ -603,8 +591,8 @@ const LinksTable: FC = () => {
             <NavButton
               disabled={options.limit === c}
               onClick={() => {
-                formState.setField("limit", c);
-                formState.setField("skip", "0");
+                setValue("limit", c);
+                setValue("skip", "0");
               }}
             >
               {c}
@@ -651,7 +639,7 @@ const LinksTable: FC = () => {
             <Th flexGrow={1} flexShrink={1}>
               <Flex as="form" onSubmit={onSubmit}>
                 <TextInput
-                  {...text("search")}
+                  {...register("search")}
                   placeholder="Search..."
                   height={[30, 32]}
                   placeholderSize={[13, 13, 13, 13]}
@@ -665,8 +653,8 @@ const LinksTable: FC = () => {
 
                 {isAdmin && (
                   <Checkbox
-                    {...label("all")}
-                    {...checkbox("all")}
+                    {...register("all")}
+                    checked={watch("all")}
                     label="All links"
                     ml={3}
                     fontSize={[14, 15]}

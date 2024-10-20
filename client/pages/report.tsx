@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from 'react-hook-form';
 import { Flex } from "rebass/styled-components";
 import React, { useState } from "react";
 import axios from "axios";
@@ -17,18 +17,17 @@ import getConfig from "next/config";
 const { publicRuntimeConfig } = getConfig();
 
 const ReportPage = () => {
-  const [formState, { text }] = useFormState<{ url: string }>();
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<{ url: string }>();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useMessage(5000);
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data: { url: string }) => {
     setLoading(true);
     setMessage();
     try {
-      await axios.post(`${APIv2.Links}/report`, { link: formState.values.url });
+      await axios.post(`${APIv2.Links}/report`, { link: data.url });
       setMessage("Thanks for the report, we'll take actions shortly.", "green");
-      formState.clear();
+      reset();
     } catch (error) {
       setMessage(error?.response?.data?.error || "Couldn't send report.");
     }
@@ -57,10 +56,10 @@ const ReportPage = () => {
           flexDirection={["column", "row"]}
           alignItems={["flex-start", "center"]}
           justifyContent="flex-start"
-          onSubmit={onSubmit}
+          onSubmit={handleSubmit(onSubmit)}
         >
           <TextInput
-            {...text("url")}
+            {...register("url", { required: "URL is required" })}
             placeholder={`${publicRuntimeConfig.DEFAULT_DOMAIN}/example`}
             height={[44, 54]}
             width={[1, 1 / 2]}

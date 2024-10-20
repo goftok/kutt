@@ -22,7 +22,7 @@ interface StyledTextProps extends BoxProps {
 
 export const TextInput = styled(Flex).attrs({
   as: "input"
-})<StyledTextProps>`
+}) <StyledTextProps>`
   position: relative;
   box-sizing: border-box;
   letter-spacing: 0.05em;
@@ -35,23 +35,14 @@ export const TextInput = styled(Flex).attrs({
   border-bottom-width: ${prop("bbw", "5px")};
   transition: all 0.5s ease-out;
 
-  :focus {
-    outline: none;
-    box-shadow: 0 20px 35px hsla(200, 15%, 70%, 0.4);
-  }
 
-  ::placeholder {
-    font-size: ${withProp("placeholderSize", (s) => s[0] || 14)}px;
-    letter-spacing: 0.05em;
-    color: #888;
-  }
 
   @media screen and (min-width: 64em) {
     ::placeholder {
       font-size: ${withProp(
-        "placeholderSize",
-        (s) => s[3] || s[2] || s[1] || s[0] || 16
-      )}px;
+  "placeholderSize",
+  (s) => s[3] || s[2] || s[1] || s[0] || 16
+)}px;
     }
   }
 
@@ -60,9 +51,9 @@ export const TextInput = styled(Flex).attrs({
     border-bottom-width: ${prop("bbw", "6px")};
     ::placeholder {
       font-size: ${withProp(
-        "placeholderSize",
-        (s) => s[2] || s[1] || s[0] || 15
-      )}px;
+  "placeholderSize",
+  (s) => s[2] || s[1] || s[0] || 15
+)}px;
     }
   }
 
@@ -74,7 +65,6 @@ export const TextInput = styled(Flex).attrs({
 `;
 
 TextInput.defaultProps = {
-  value: "",
   height: [40, 44],
   py: 0,
   px: [3, 24],
@@ -99,7 +89,7 @@ interface SelectOptions extends StyledSelectProps {
 
 const StyledSelect: FC<StyledSelectProps> = styled(Flex).attrs({
   as: "select"
-})<StyledSelectProps>`
+}) <StyledSelectProps>`
   position: relative;
   box-sizing: border-box;
   letter-spacing: 0.05em;
@@ -161,7 +151,7 @@ const CheckboxInput = styled(Flex).attrs({
   width: 0,
   height: 0,
   opacity: 0
-})<ChecknoxInputProps>`
+}) <ChecknoxInputProps>`
   position: relative;
   opacity: 0;
 `;
@@ -169,7 +159,7 @@ const CheckboxInput = styled(Flex).attrs({
 const CheckboxBox = styled(Flex).attrs({
   alignItems: "center",
   justifyContent: "center"
-})<{ checked: boolean }>`
+}) <{ checked: boolean }>`
   position: relative;
   transition: color 0.3s ease-out;
   border-radius: 4px;
@@ -182,8 +172,8 @@ const CheckboxBox = styled(Flex).attrs({
   }
 
   ${ifProp(
-    "checked",
-    css`
+  "checked",
+  css`
       box-shadow: 0 3px 5px rgba(50, 50, 50, 0.4);
 
       :after {
@@ -208,12 +198,12 @@ const CheckboxBox = styled(Flex).attrs({
         `} 0.1s ease-in;
       }
     `
-  )}
+)}
 `;
 
 interface CheckboxProps
   extends ChecknoxInputProps,
-    Omit<BoxProps, "name" | "checked" | "onChange" | "value"> {
+  Omit<BoxProps, "name" | "checked" | "onChange" | "value"> {
   label: string;
   value?: boolean | string;
 }

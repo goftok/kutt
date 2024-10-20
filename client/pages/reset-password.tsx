@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from 'react-hook-form';
 import React, { useEffect, useState } from "react";
 import { Flex } from "rebass/styled-components";
 import Router from "next/router";
@@ -27,9 +27,8 @@ const ResetPassword: NextPage<Props> = ({ token }) => {
   const addAuth = useStoreActions((s) => s.auth.add);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useMessage();
-  const [formState, { email, label }] = useFormState<{ email: string }>(null, {
-    withIds: true
-  });
+  const { register, handleSubmit, formState: { errors } } = useForm<{ email: string }>();
+
 
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -44,16 +43,11 @@ const ResetPassword: NextPage<Props> = ({ token }) => {
     }
   }, [auth, token, addAuth]);
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!formState.validity.email) return;
-
+  const onSubmit = async (data: { email: string }) => {
     setLoading(true);
     setMessage();
     try {
-      await axios.post(APIv2.AuthResetPassword, {
-        email: formState.values.email
-      });
+      await axios.post(APIv2.AuthResetPassword, { email: data.email });
       setMessage("Reset password email has been sent.", "green");
     } catch (error) {
       setMessage(error?.response?.data?.error || "Couldn't reset password.");
@@ -72,17 +66,17 @@ const ResetPassword: NextPage<Props> = ({ token }) => {
           If you forgot you password you can use the form below to get reset
           password link.
         </Text>
-        <Text {...label("homepage")} as="label" mt={2} fontSize={[15, 16]} bold>
+        <Text as="label" mt={2} fontSize={[15, 16]} bold>
           Email address
         </Text>
         <Flex
           as="form"
           alignItems="center"
           justifyContent="flex-start"
-          onSubmit={onSubmit}
+          onSubmit={handleSubmit(onSubmit)}
         >
           <TextInput
-            {...email("email")}
+            {...register("email", { required: "Email is required" })}
             placeholder="Email address..."
             height={[44, 54]}
             width={[1, 1 / 2]}
@@ -90,6 +84,7 @@ const ResetPassword: NextPage<Props> = ({ token }) => {
             autoFocus
             required
           />
+          {errors.email && <Text color="red" mt={1}>{errors.email.message}</Text>}
           <Button type="submit" height={[40, 44]} my={3}>
             {loading && <Icon name={"spinner"} stroke="white" mr={2} />}
             Reset password
