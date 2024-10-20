@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from "react-hook-form";
 import React, { FC, useState } from "react";
 import getConfig from "next/config";
 import Router from "next/router";
@@ -16,36 +16,39 @@ import Modal from "../Modal";
 
 const { publicRuntimeConfig } = getConfig();
 
+interface FormData {
+  accpass: string;
+}
+
 const SettingsDeleteAccount: FC = () => {
   const [message, setMessage] = useMessage(1500);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
-  const [formState, { password, label }] = useFormState<{ accpass: string }>(
-    null,
-    {
-      withIds: true
-    }
-  );
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>();
 
-  const onSubmit = async e => {
-    e.preventDefault();
-    if (loading) return;
-    setModal(true);
+  const onSubmit = () => {
+    if (!loading) {
+      setModal(true);
+    }
   };
 
-  const onDelete = async e => {
-    e.preventDefault();
+
+  const onDelete = async (data: FormData) => {
     if (loading) return;
     setLoading(true);
     try {
       await axios.post(
         `${APIv2.Users}/delete`,
-        { password: formState.values.accpass },
+        { password: data.accpass },
         getAxiosConfig()
       );
       Router.push("/logout");
     } catch (error) {
-      setMessage(error.response.data.error);
+      setMessage(error?.response?.data?.error || "Error deleting account.");
     }
     setLoading(false);
   };
@@ -59,7 +62,6 @@ const SettingsDeleteAccount: FC = () => {
         Delete your account from {publicRuntimeConfig.SITE_NAME}.
       </Text>
       <Text
-        {...label("password")}
         as="label"
         mb={[2, 3]}
         fontSize={[15, 16]}
@@ -69,7 +71,9 @@ const SettingsDeleteAccount: FC = () => {
       </Text>
       <RowCenterV as="form" onSubmit={onSubmit}>
         <TextInput
-          {...password("accpass")}
+          {...register("accpass", {
+            required: "Password is required",
+          })}
           placeholder="Password..."
           autocomplete="off"
           mr={3}

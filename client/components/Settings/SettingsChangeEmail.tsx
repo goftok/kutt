@@ -1,7 +1,8 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from "react-hook-form";
 import React, { FC, useState } from "react";
 import { Flex } from "rebass";
 import axios from "axios";
+import emailValidator from "email-validator";
 
 import { getAxiosConfig } from "../../utils";
 import { useMessage } from "../../hooks";
@@ -12,26 +13,29 @@ import { Button } from "../Button";
 import { Col } from "../Layout";
 import Icon from "../Icon";
 
+interface FormData {
+  changeemailpass: string;
+  changeemailaddress: string;
+}
+
 const SettingsChangeEmail: FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useMessage(5000);
-  const [formState, { password, email, label }] = useFormState<{
-    changeemailpass: string;
-    changeemailaddress: string;
-  }>(null, {
-    withIds: true
-  });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>();
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data: FormData) => {
     if (loading) return;
     setLoading(true);
     try {
       const res = await axios.post(
         APIv2.AuthChangeEmail,
         {
-          password: formState.values.changeemailpass,
-          email: formState.values.changeemailaddress
+          password: data.changeemailpass,
+          email: data.changeemailaddress,
         },
         getAxiosConfig()
       );
@@ -47,11 +51,10 @@ const SettingsChangeEmail: FC = () => {
       <H2 mb={4} bold>
         Change email address
       </H2>
-      <Col alignItems="flex-start" onSubmit={onSubmit} width={1} as="form">
+      <Col alignItems="flex-start" onSubmit={handleSubmit(onSubmit)} width={1} as="form">
         <Flex width={1} flexDirection={["column", "row"]}>
           <Col mr={[0, 2]} mb={[3, 0]} flex="0 0 auto">
             <Text
-              {...label("changeemailpass")}
               as="label"
               mb={[2, 3]}
               fontSize={[15, 16]}
@@ -60,7 +63,7 @@ const SettingsChangeEmail: FC = () => {
               Password:
             </Text>
             <TextInput
-              {...password("changeemailpass")}
+              {...register("changeemailpass", { required: "Password is required" })}
               placeholder="Password..."
               maxWidth="240px"
               required
@@ -68,7 +71,6 @@ const SettingsChangeEmail: FC = () => {
           </Col>
           <Col ml={[0, 2]} flex="0 0 auto">
             <Text
-              {...label("changeemailaddress")}
               as="label"
               mb={[2, 3]}
               fontSize={[15, 16]}
@@ -77,7 +79,7 @@ const SettingsChangeEmail: FC = () => {
               New email address:
             </Text>
             <TextInput
-              {...email("changeemailaddress")}
+              {...register("changeemailaddress", { required: "Email is required", validate: emailValidator.validate })}
               placeholder="john@example.com"
               flex="1 1 auto"
               maxWidth="240px"

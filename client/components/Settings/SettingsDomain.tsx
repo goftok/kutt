@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from "react-hook-form";
 import { Flex } from "rebass/styled-components";
 import React, { FC, useState } from "react";
 import styled from "styled-components";
@@ -26,6 +26,12 @@ const Td = styled(Flex).attrs({ as: "td", py: 12, px: 3 })`
   font-size: 15px;
 `;
 
+
+interface FormData {
+  address: string;
+  homepage: string;
+}
+
 const SettingsDomain: FC = () => {
   const { saveDomain, deleteDomain } = useStoreActions((s) => s.settings);
   const [domainToDelete, setDomainToDelete] = useState<Domain>(null);
@@ -34,21 +40,22 @@ const SettingsDomain: FC = () => {
   const [message, setMessage] = useMessage(2000);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
-  const [formState, { label, text }] = useFormState<{
-    address: string;
-    homepage: string;
-  }>(null, { withIds: true });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormData>();
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data: FormData) => {
     setLoading(true);
-
     try {
-      await saveDomain(formState.values);
+      await saveDomain(data);
+      setMessage("Domain added successfully!", "green");
+      reset();
     } catch (err) {
-      setMessage(err?.response?.data?.error || "Couldn't add domain.");
+      setMessage(errorMessage(err, "Couldn't add domain."));
     }
-    formState.clear();
     setLoading(false);
   };
 
@@ -59,10 +66,12 @@ const SettingsDomain: FC = () => {
 
   const onDelete = async () => {
     setDeleteLoading(true);
-    await deleteDomain(domainToDelete.id).catch((err) =>
-      setMessage(errorMessage(err, "Couldn't delete the domain."))
-    );
-    setMessage("Domain has been deleted successfully.", "green");
+    try {
+      await deleteDomain(domainToDelete!.id);
+      setMessage("Domain has been deleted successfully.", "green");
+    } catch (err) {
+      setMessage(errorMessage(err, "Couldn't delete the domain."));
+    }
     closeModal();
     setDeleteLoading(false);
   };
@@ -121,7 +130,7 @@ const SettingsDomain: FC = () => {
       )}
       <Col
         alignItems="flex-start"
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         width={1}
         as="form"
         my={[3, 4]}
@@ -129,7 +138,6 @@ const SettingsDomain: FC = () => {
         <Flex width={1} flexDirection={["column", "row"]}>
           <Col mr={[0, 2]} mb={[3, 0]} flex="0 0 auto">
             <Text
-              {...label("address")}
               as="label"
               mb={[2, 3]}
               fontSize={[15, 16]}
@@ -138,15 +146,19 @@ const SettingsDomain: FC = () => {
               Domain:
             </Text>
             <TextInput
-              {...text("address")}
+              {...register("address", { required: "Domain is required" })}
               placeholder="example.com"
               maxWidth="240px"
               required
             />
           </Col>
+          {errors.address && (
+            <Text color="red" mt={1}>
+              {errors.address.message}
+            </Text>
+          )}
           <Col ml={[0, 2]} flex="0 0 auto">
             <Text
-              {...label("homepage")}
               as="label"
               mb={[2, 3]}
               fontSize={[15, 16]}
@@ -155,7 +167,7 @@ const SettingsDomain: FC = () => {
               Homepage (optional):
             </Text>
             <TextInput
-              {...text("homepage")}
+              {...register("homepage")}
               placeholder="Homepage URL"
               flex="1 1 auto"
               maxWidth="240px"

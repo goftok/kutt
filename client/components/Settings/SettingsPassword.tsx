@@ -1,4 +1,4 @@
-import { useFormState } from "react-use-form-state";
+import { useForm } from "react-hook-form";
 import { Flex } from "rebass/styled-components";
 import React, { FC, useState } from "react";
 import axios from "axios";
@@ -12,29 +12,31 @@ import Text, { H2 } from "../Text";
 import { Col } from "../Layout";
 import Icon from "../Icon";
 
+interface FormData {
+  password: string;
+}
+
 const SettingsPassword: FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useMessage(2000);
-  const [formState, { password, label }] = useFormState<{ password: string }>(
-    null,
-    { withIds: true }
-  );
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset
+  } = useForm<FormData>();
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data: FormData) => {
     if (loading) return;
-    if (!formState.validity.password) {
-      return setMessage(formState.errors.password);
-    }
     setLoading(true);
     setMessage();
     try {
       const res = await axios.post(
         APIv2.AuthChangePassword,
-        formState.values,
+        data,
         getAxiosConfig()
       );
-      formState.clear();
+      reset();
       setMessage(res.data.message, "green");
     } catch (err) {
       setMessage(err?.response?.data?.error || "Couldn't update the password.");
@@ -49,7 +51,6 @@ const SettingsPassword: FC = () => {
       </H2>
       <Text mb={4}>Enter a new password to change your current password.</Text>
       <Text
-        {...label("password")}
         as="label"
         mb={[2, 3]}
         fontSize={[15, 16]}
@@ -57,16 +58,16 @@ const SettingsPassword: FC = () => {
       >
         New password:
       </Text>
-      <Flex as="form" onSubmit={onSubmit}>
+      <Flex as="form" onSubmit={handleSubmit(onSubmit)}>
         <TextInput
-          {...password({
-            name: "password",
+          {...register("password", {
+            required: "Password is required",
             validate: (value) => {
               const val = value.trim();
-              if (!val || val.length < 8) {
-                return "Password must be at least 8 chars.";
+              if (val.length < 8) {
+                return "Password must be at least 8 characters.";
               }
-            }
+            },
           })}
           autocomplete="off"
           placeholder="New password..."
